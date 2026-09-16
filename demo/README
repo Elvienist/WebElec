@@ -1,0 +1,110 @@
+# PHP/MySQL Security Concepts Demo
+
+An interactive demo showing the difference between insecure ("bad") and secure ("good") approaches to three core database concepts:
+
+- **Normalization** — one denormalized table vs. properly split, related tables
+- **Prepared Statements** — raw string concatenation (SQL injection) vs. bound parameters
+- **Transactions** — no rollback protection vs. atomic all-or-nothing operations
+
+Built with plain PHP + PDO (no framework) so the underlying SQL mechanics stay visible.
+
+## How it works
+
+- `index.php` is a simple router. URL parameters (`?concept=...&mode=...`) control which concept and which mode (bad/good) is shown.
+- Each concept's logic lives in its own file under `partials/`.
+- Clicking **Run** actually executes the corresponding SQL against a live MySQL database, so you can see real before/after results.
+- **Reset Data** re-seeds the database back to its original state — use this between demo runs.
+
+## Setup
+
+1. Make sure you have [XAMPP](https://www.apachefriends.org/) installed, with Apache and MySQL running.
+2. Copy this folder into `C:\xampp\htdocs\demo` (or your equivalent htdocs path).
+3. Open `db.php` and set `$pass` to your MySQL root password (leave as `''` if using XAMPP's default MySQL with no password).
+4. Open `http://localhost/phpmyadmin`, go to the **SQL** tab, and run the setup script below to create the database and seed data.
+5. Visit `http://localhost/demo/index.php` in your browser.
+
+### Setup SQL
+
+```sql
+CREATE DATABASE IF NOT EXISTS demo_db;
+USE demo_db;
+
+DROP TABLE IF EXISTS enrollments_bad;
+CREATE TABLE enrollments_bad (
+    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_name VARCHAR(100),
+    student_email VARCHAR(100),
+    course_name VARCHAR(100),
+    instructor VARCHAR(100)
+);
+
+INSERT INTO enrollments_bad (student_name, student_email, course_name, instructor) VALUES
+('Ana Cruz', 'ana@mail.com', 'Databases', 'Ms. Lopez'),
+('Ana Cruz', 'ana@mail.com', 'Web Dev 101', 'Mr. Reyes'),
+('Ben Tan', 'ben@mail.com', 'UX Design', 'Ms. Santos'),
+('Cara Lim', 'cara@mail.com', 'Cybersecurity', 'Mr. Dizon');
+
+DROP TABLE IF EXISTS course_seats_bad;
+CREATE TABLE course_seats_bad (
+    course_name VARCHAR(100) PRIMARY KEY,
+    seats_left INT
+);
+INSERT INTO course_seats_bad VALUES ('Web Dev 101', 5);
+
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS students;
+
+CREATE TABLE students (
+    student_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE courses (
+    course_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_name VARCHAR(100),
+    instructor VARCHAR(100),
+    seats_left INT
+);
+
+CREATE TABLE enrollments (
+    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    course_id INT,
+    FOREIGN KEY (student_id) REFERENCES students(student_id),
+    FOREIGN KEY (course_id) REFERENCES courses(course_id)
+);
+
+INSERT INTO students (name, email) VALUES
+('Ana Cruz', 'ana@mail.com'),
+('Ben Tan', 'ben@mail.com'),
+('Cara Lim', 'cara@mail.com');
+
+INSERT INTO courses (course_name, instructor, seats_left) VALUES
+('Databases', 'Ms. Lopez', 10),
+('UX Design', 'Ms. Santos', 10),
+('Cybersecurity', 'Mr. Dizon', 8),
+('Web Dev 101', 'Mr. Reyes', 5);
+
+INSERT INTO enrollments (student_id, course_id) VALUES
+(1, 1), (1, 4), (2, 2), (3, 3);
+```
+
+## Project structure
+
+```
+demo/
+├── db.php                    # Shared PDO connection + renderTable() helper
+├── index.php                 # Router + navigation
+├── reset.php                 # Re-seeds the database to its original state
+└── partials/
+    ├── normalization.php     # One big table vs. split, related tables
+    ├── prepared.php          # Raw SQL vs. prepared statements
+    └── transactions.php      # No rollback vs. atomic transactions
+```
+
+## Notes
+
+- This is a teaching demo, not production code — intentionally shows an unsafe pattern (SQL injection) alongside its fix for comparison purposes.
+- Data changes made by clicking "Run" are real and persist across page loads. Use **Reset Data** before each demo run to keep results consistent.
