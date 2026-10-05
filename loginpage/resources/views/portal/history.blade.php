@@ -3,19 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Attendance History</title>
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
-    body { background-color:#030308; padding:40px; color:#fff; }
-    h2 { margin-bottom:15px; }
-    table { width:100%; border-collapse:collapse; background:rgba(15,16,22,0.85); border-radius:12px; overflow:hidden; }
-    th, td { padding:12px 15px; text-align:left; border-bottom:1px solid #262b3a; font-size:14px; }
-    th { background:#1c1f2b; }
-    .status-present { color:#4ade80; }
-    .status-absent { color:#ff6b6b; }
-    .back { display:inline-block; margin-top:15px; color:#4a9bff; text-decoration:none; font-size:13px; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
-<body>
+<body class="page">
     <h2>My Attendance History</h2>
     <table>
         <tr><th>Date</th><th>Time</th><th>Status</th></tr>

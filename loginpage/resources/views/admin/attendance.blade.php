@@ -3,26 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Attendance Records</title>
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
-    body { background-color:#030308; padding:40px; color:#fff; }
-    h2 { margin-bottom:15px; }
-    form.filter { margin-bottom:20px; }
-    form.filter input[type=date] { padding:8px; border-radius:8px; border:1px solid #2a2f40; background:#0c0d13; color:#fff; }
-    form.filter button { padding:8px 14px; border-radius:8px; border:none; background:#2e7dff; color:#fff; cursor:pointer; }
-    table { width:100%; border-collapse:collapse; background:rgba(15,16,22,0.85); border-radius:12px; overflow:hidden; margin-bottom:25px; }
-    th, td { padding:12px 15px; text-align:left; border-bottom:1px solid #262b3a; font-size:14px; }
-    th { background:#1c1f2b; }
-    .status-present { color:#4ade80; }
-    .status-absent { color:#ff6b6b; }
-    .mark-absent { background:rgba(15,16,22,0.85); padding:20px; border-radius:12px; max-width:400px; }
-    .mark-absent input { width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #2a2f40; background:#0c0d13; color:#fff; }
-    .mark-absent button { padding:10px 14px; border-radius:8px; border:none; background:#d64545; color:#fff; cursor:pointer; }
-    .back { display:inline-block; margin-top:15px; color:#4a9bff; text-decoration:none; font-size:13px; }
-    .msg { margin-bottom:15px; font-size:13px; color:#4a9bff; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
-<body>
+<body class="page">
     <h2>Attendance Records — {{ $date }}</h2>
 
     <form class="filter" method="GET" action="{{ route('admin.attendance') }}">
