@@ -14,6 +14,14 @@
   --success: #4ade80;
 }
 
+.input-group select {
+  width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:12px;
+  background-color:var(--input-bg); color:#fff; outline:none; font-size:14px;
+}
+.strength { height:6px; background:var(--border); border-radius:3px; margin-top:8px; overflow:hidden; }
+#strength-bar { height:100%; width:0; transition:width .2s, background .2s; }
+.strength-label { font-size:12px; margin-top:4px; min-height:14px; }
+
 /* ---------- Reset & base ---------- */
 * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
 body { background-color:var(--bg); color:#fff; }

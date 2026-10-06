@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StudentPortalController;
+use App\Http\Controllers\SignupController;
+use App\Http\Controllers\PasswordResetController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -16,6 +18,14 @@ Route::get('/login', function () {
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::get('/signup', [SignupController::class, 'show'])->name('signup');
+Route::post('/signup', [SignupController::class, 'store'])->name('signup.store')->middleware('throttle:10,1');
+
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgot'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendLink'])->name('password.email')->middleware('throttle:5,1');
+Route::get('/reset-password/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update')->middleware('throttle:5,1');
 
 // ADMIN ROUTES
 Route::middleware(['checklogin', 'isadmin'])->prefix('admin')->name('admin.')->group(function () {

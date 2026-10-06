@@ -154,7 +154,12 @@
        <img src="{{ asset('images/orsus-removebg-preview.png') }}" class="badge" alt="Logo">
         <h2>Welcome Back</h2>
         <p class="subtitle">Sign in to continue</p>
-
+            @if(session('success'))
+                <p style="color:#4ade80;font-size:13px;text-align:center;margin-bottom:15px;">{{ session('success') }}</p>
+            @endif
+            @error('email')
+                <p style="color:#ff6b6b;font-size:13px;text-align:center;margin-bottom:15px;">{{ $message }}</p>
+            @enderror   
         <form action="{{ route('login') }}" method="POST">
             @csrf
 
@@ -167,10 +172,17 @@
             </div>
 
             <div class="forgot-row">
-                <a href="#">Forgot Password?</a>
+                <a href="{{ route('password.request') }}">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn-login">Log in</button>
 
             <div class="extra-text">
-                Don't have an account? <a href="#">Sign up</a>
+                Don't have an account? <a href="{{ route('signup') }}">Sign up</a>
+            </div>
+         </form>
+    </div>
+
+    @include('auth.partials.toggle-password')
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 return [
 
+    'admin_signup_code' => env('ADMIN_SIGNUP_CODE'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Name
