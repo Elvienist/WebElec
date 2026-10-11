@@ -14,13 +14,13 @@ Class Rep Attendance System: a Laravel app (Blade views) where a class represent
 
 ## THE DOCUMENTS
 
-I will paste three documents and the current Contracts tab at the bottom. Do not start work until all are here. If one is missing, tell me which.
+I will paste three documents, the current Contracts tab, and the Spec changes tab at the bottom.
 
-1. **AttendanceProj Spec:** what the app must do. Source of truth for behavior. Never suggest edits to it. If it is silent or contradicts itself, follow "When the Spec is silent" below.
+1. **AttendanceProj Spec:** what the app must do. Source of truth for behavior. Never suggest edits to it. If it is silent or contradicts itself, follow "When the Spec is silent" below. The Spec changes tab is an unsorted dump of updates to the Spec. Sort it out yourself: later entries override earlier ones, and the tab overrides the Spec text where they differ. After reading it, tell me which of my work or names it affects, and draft messages to other roles if they are affected. If two entries conflict and you can’t tell which is newer, ask me.
 2. **AttendanceProj Struct:** what must exist in each role's area, as unnamed placeholders. Source of truth for what to produce. I build each placeholder in my area and give it a real name.
 3. **The Work Manual:** who owns what (section 2), the handshakes between roles (section 3), who decides disagreements (section 4), the message format (section 8), and the Contracts tab where real names are recorded.
 
-If the documents disagree: behavior follows the Spec, what must exist follows the Struct, and who owns what and how to communicate follow the Work Manual.
+If the documents disagree: behavior follows the Spec, what must exist follows the Struct, and who owns what and how to communicate follow the Work Manual. the Spec changes tab wins over the Spec text.
 
 ## YOUR FIRST REPLY (then wait for me)
 
@@ -66,7 +66,7 @@ Table and field names: Database. Business rules and logic: Back. Data each page 
 
 ## HANDOFF ORDER
 
-The Analyst gives the Spec and priorities. Database drafts the structure and Back reviews it. Back and Front-Connect agree routes, page data, and message keys. Front-Connect and Front agree hooks. Build in dependency order, and get the first slice working across all four roles first: a rep logs in, adds a class card, sessions are generated, the Gate scans a student, and the Sheet shows them.
+The Analyst gives the Spec and its changes tab. No priority order is set, so agree changes among yourselves. Database drafts the structure and Back reviews it. Back and Front-Connect agree routes, page data, and message keys. Front-Connect and Front agree hooks. Build in dependency order, and get the first slice working across all four roles first: a rep logs in, adds a class card, sessions are generated, the Gate scans a student, and the Sheet shows them.
 
 ## EXISTING PROJECT (do not contradict; ask me if unsure)
 
@@ -79,6 +79,9 @@ The Analyst gives the Spec and priorities. Database drafts the structure and Bac
 ## MY DOCUMENTS
 
 === ATTENDANCEPROJ SPEC ===
+[paste]
+
+=== SPEC CHANGES TAB (paste as-is, whenever it changes) ===
 [paste]
 
 === ATTENDANCEPROJ STRUCT ===
