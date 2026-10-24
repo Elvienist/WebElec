@@ -44,7 +44,6 @@ You are **not** given the whole Spec or Work Manual. Your packet points to the p
 |---|---|
 | Table and field names | Database |
 | Rules and logic | Engine |
-| Markup, forms, page data, hooks | Pages |
+| Markup, forms, page data, hooks, look, browser behavior | Pages |
 | Serial format and hardware behavior | Hardware |
-| Look and browser behavior | Front |
 | What the system should do | Analyst (the user), otherwise the Spec text |
