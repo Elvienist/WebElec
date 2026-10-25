@@ -28,7 +28,7 @@ function evaluate_reading(float $temp, bool $is_test, array $state): array {
             $calib_start_time = strtotime($state['calibration_start']);
         }
 
-        if ((time() - $calib_start_time) < (CALIBRATE_MINUTES * 60)) {
+        if (!$is_test && (time() - $calib_start_time) < (CALIBRATE_MINUTES * 60)) {
             return [
                 'label' => 'Calibrating',
                 'led' => 'OFF',
@@ -59,7 +59,7 @@ function evaluate_reading(float $temp, bool $is_test, array $state): array {
                 $episode_state = null;
             }
 
-            if ($temp >= warming_threshold) {
+            if ($temp >= $warming_threshold) {
                 $label = 'Warming';
                 $led = 'OFF';
             } else {
