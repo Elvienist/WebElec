@@ -1,67 +1,72 @@
 #include <DHT.h>
 
-#define DHTPIN 2
-#define DHTTYPE DHT11
-#define LED_PIN 8
+#define DHT_PIN   2
+#define DHT_TYPE  DHT11
+#define LED_PIN   8
 
-DHT dht(DHTPIN, DHTTYPE);
+const unsigned long SEND_INTERVAL  = 2000;   // send a reading every 2 s
+const unsigned long BLINK_INTERVAL = 500;    // blink every 500 ms
+const unsigned long FAILSAFE_MS    = 10000;  // LED off after 10 s without a reply
 
-unsigned long lastReadTime = 0;
-const unsigned long readInterval = 2000; // 2 seconds
+DHT dht(DHT_PIN, DHT_TYPE);
 
-unsigned long lastReplyTime = 0;
-const unsigned long failsafeTimeout = 10000; // 10 seconds
-
-char currentCommand = 'O';
+char ledMode = 'O';              // O = off, N = steady on, B = blinking
 bool blinkState = false;
-unsigned long lastBlinkToggle = 0;
+unsigned long lastSend  = 0;
+unsigned long lastBlink = 0;
+unsigned long lastReply = 0;
 
 void setup() {
   Serial.begin(9600);
-  dht.begin();
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
-  lastReplyTime = millis();
+  digitalWrite(LED_PIN, LOW);    // LED is off at power-up
+  dht.begin();
+  lastReply = millis();
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+  unsigned long now = millis();
 
-  // 1. Send reading every 2 seconds
-  if (currentMillis - lastReadTime >= readInterval) {
-    lastReadTime = currentMillis;
-    float temp = dht.readTemperature();
+  // Receive single characters without blocking
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == 'O' || c == 'N' || c == 'B') {
+      if (c == 'B' && ledMode != 'B') {
+        blinkState = true;       // start the blink with the LED on
+        lastBlink = now;
+      }
+      ledMode = c;
+      lastReply = now;
+    }                            // anything else is ignored
+  }
 
-    if (isnan(temp)) {
+  // Failsafe: no valid reply for 10 s turns the LED off
+  if (now - lastReply >= FAILSAFE_MS) {
+    ledMode = 'O';
+  }
+
+  // Drive the LED (blinking is timed here, so a slow PHP reply never stutters it)
+  if (ledMode == 'N') {
+    digitalWrite(LED_PIN, HIGH);
+  } else if (ledMode == 'B') {
+    if (now - lastBlink >= BLINK_INTERVAL) {
+      lastBlink = now;
+      blinkState = !blinkState;
+    }
+    digitalWrite(LED_PIN, blinkState ? HIGH : LOW);
+  } else {
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  // Send a reading every 2 s
+  if (now - lastSend >= SEND_INTERVAL) {
+    lastSend = now;
+    float t = dht.readTemperature();   // °C, no scaling or averaging
+    if (isnan(t)) {
       Serial.println("E");
     } else {
       Serial.print("T:");
-      Serial.println(temp, 1);
-    }
-  }
-
-  if (Serial.available() > 0) {
-    char cmd = (char)Serial.read();
-    if (cmd == 'O' || cmd == 'N' || cmd == 'B') {
-      currentCommand = cmd;
-      lastReplyTime = currentMillis; // Reset failsafe timer upon receiving a command
-    }
-  }
-
-  if (currentMillis - lastReplyTime > failsafeTimeout) {
-    currentCommand = 'O';
-  }
-
-  if (currentCommand == 'O') {
-    digitalWrite(LED_PIN, LOW);
-  } else if (currentCommand == 'N') {
-    digitalWrite(LED_PIN, HIGH);
-  } else if (currentCommand == 'B') {
-    // Blink every 500ms when command is B
-    if (currentMillis - lastBlinkToggle >= 500) {
-      lastBlinkToggle = currentMillis;
-      blinkState = !blinkState;
-      digitalWrite(LED_PIN, blinkState ? HIGH : LOW);
+      Serial.println(t, 1);
     }
   }
 }
