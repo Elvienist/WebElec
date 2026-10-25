@@ -38,9 +38,6 @@ function logout_user(): void {
 }
 
 function create_admin(string $username, string $password): ?string {
-    if (!preg_init('/^[a-zA-Z0-9_.-]{3,50}$/', $username)) { // Note: use preg_match
-        // Will adjust below
-    }
     if (!preg_match('/^[a-zA-Z0-9_.-]{3,50}$/', $username)) {
         return "Username must be 3 to 50 characters of letters, digits, _, ., -.";
     }
@@ -55,8 +52,7 @@ function create_admin(string $username, string $password): ?string {
     }
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    $created_by = $_SESSION['admin_username'] ?? 'system';
-
+    $created_by = $_SESSION['admin_id'] ?? null;
     $stmt = db()->prepare("INSERT INTO admins (username, password_hash, created_by, created_at) VALUES (?, ?, ?, ?)");
     $stmt->execute([$username, $hash, $created_by, date('Y-m-d H:i:s')]);
 
