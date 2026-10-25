@@ -56,10 +56,9 @@ function live_status(): array {
         $running_state = 'idle';
     }
 
-    $label = $state['last_label'];
+    $label = $state['last_label'] ?? 'Idle';
     $temp = $state['last_temp'];
     $led = $state['last_led'];
-    $tone = label_tone($label);
 
     if (!$signal_ok && $running_state === 'running') {
         $label = 'No Signal';
@@ -76,6 +75,8 @@ function live_status(): array {
         $led = 'OFF';
     }
 
+    $tone = label_tone($label);
+    
     return [
         'ok' => true,
         'state' => $running_state,
