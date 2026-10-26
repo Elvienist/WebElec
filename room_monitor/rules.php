@@ -103,8 +103,8 @@ function evaluate_reading(float $temp, bool $is_test, array $state): array {
         $log_style = $state['custom_log_style'];
         $interval_min = (int)$state['custom_interval_min'];
 
-        $low_threshold = $low - CUSTOM_HYSTERESIS;
-        $high_threshold = $high + CUSTOM_HYSTERESIS;
+        $low_threshold = $low + CUSTOM_HYSTERESIS;
+        $high_threshold = $high - CUSTOM_HYSTERESIS;
 
         $in_high = ($episode_state === 'TOO_HIGH');
         $in_low = ($episode_state === 'TOO_LOW');

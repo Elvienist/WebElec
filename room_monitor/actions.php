@@ -193,6 +193,93 @@ try {
                 flash_set('error', 'Nothing to silence.');
             }
             break;
+                case 'test_sim':
+            if ((string) ($_POST['sim_on'] ?? '0') === '1') {
+                save_state([
+                    'sim_on'   => 1,
+                    'sim_temp' => $state['sim_temp'] !== null ? (float) $state['sim_temp'] : SIM_NORMAL,
+                ]);
+                flash_set('success', 'Simulation on.');
+            } else {
+                save_state(['sim_on' => 0, 'sim_temp' => null, 'episode_state' => null]);
+                flash_set('success', 'Simulation off.');
+            }
+            break;
+
+        case 'test_scenario':
+            $scenario = (string) ($_POST['scenario'] ?? '');
+            $temps = [
+                'normal'   => SIM_NORMAL,
+                'elevated' => SIM_ELEVATED,
+                'fire'     => SIM_FIRE,
+                'too_low'  => (float) $state['custom_low'] - 3,
+                'too_high' => (float) $state['custom_high'] + 3,
+            ];
+            if ($scenario === 'spike') {
+                $cut = date('Y-m-d H:i:s', time() - BASELINE_MINUTES * 60);
+                $stmt = db()->prepare('SELECT COUNT(*) FROM readings WHERE is_test = 1 AND taken_at >= ?');
+                $stmt->execute([$cut]);
+                if ((int) $stmt->fetchColumn() < 60) {
+                    $ins = db()->prepare('INSERT INTO readings (temp, taken_at, is_test) VALUES (29.0, ?, 1)');
+                    for ($i = 1; $i <= 120; $i++) {
+                        $ins->execute([date('Y-m-d H:i:s', time() - $i * 12)]);
+                    }
+                }
+                $stmt = db()->prepare('SELECT AVG(temp) FROM readings WHERE is_test = 1 AND taken_at >= ?');
+                $stmt->execute([$cut]);
+                $temps['spike'] = round((float) $stmt->fetchColumn() + SIM_SPIKE_ADD, 1);
+            }
+            if (!isset($temps[$scenario])) {
+                flash_set('error', 'Unknown scenario.');
+                break;
+            }
+            save_state(['sim_on' => 1, 'sim_temp' => $temps[$scenario]]);
+            flash_set('success', 'Scenario applied.');
+            break;
+
+        case 'test_manual':
+            $t = filter_var($_POST['temp'] ?? '', FILTER_VALIDATE_FLOAT);
+            if ($t === false || $t < 0 || $t > 60) {
+                flash_set('error', 'Enter a temperature from 0 to 60.');
+                break;
+            }
+            save_state(['sim_on' => 1, 'sim_temp' => round($t, 1)]);
+            flash_set('success', 'Temperature set.');
+            break;
+
+        case 'test_force_hourly':
+            if ($state['mode'] !== 'general') {
+                flash_set('error', 'Switch to General mode first.');
+                break;
+            }
+            if (empty($state['room_name'])) {
+                flash_set('error', 'Set a room first.');
+                break;
+            }
+            $isTest = (int) $state['sim_on'];
+            $stmt = db()->prepare(
+                'SELECT AVG(temp) AS a, MIN(temp) AS n, MAX(temp) AS x
+                 FROM readings WHERE is_test = ? AND taken_at >= ?'
+            );
+            $stmt->execute([$isTest, date('Y-m-d H:00:00')]);
+            $row = $stmt->fetch();
+            if (!$row || $row['a'] === null) {
+                flash_set('error', 'No readings yet.');
+                break;
+            }
+            db()->prepare(
+                "INSERT INTO records (recorded_at, room_name, mode, temp, min_temp, max_temp, event, is_test)
+                 VALUES (?, ?, 'general', ?, ?, ?, 'HOURLY', ?)"
+            )->execute([date('Y-m-d H:i:s'), $state['room_name'], round((float) $row['a'], 1), $row['n'], $row['x'], $isTest]);
+            flash_set('success', 'Hourly record written.');
+            break;
+
+        case 'test_clear':
+            db()->exec('DELETE FROM records WHERE is_test = 1');
+            db()->exec('DELETE FROM readings WHERE is_test = 1');
+            save_state(['sim_on' => 0, 'sim_temp' => null, 'episode_state' => null]);
+            flash_set('success', 'Test data cleared.');
+            break;
 
         default:
             flash_set('error', 'Unknown action.');
