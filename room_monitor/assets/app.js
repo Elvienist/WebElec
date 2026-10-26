@@ -138,6 +138,54 @@
     if (q && !window.confirm(q)) e.preventDefault();
   });
 
+  /* ---------- Loading state and double-submit guard for POST forms ---------- */
+  (function submitGuard() {
+    function reset(f, btn) {
+      f.removeAttribute('data-submitting');
+      if (btn) btn.classList.remove('is-loading');
+    }
+    document.addEventListener('submit', function (e) {
+      var f = e.target;
+      if (!f || f.tagName !== 'FORM' || e.defaultPrevented) return;        // cancelled by the confirm dialog
+      if (f.id === 'form-login') return;                                   // login.php has its own handling
+      if ((f.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+      if (f.getAttribute('data-submitting') === '1') { e.preventDefault(); return; }
+      f.setAttribute('data-submitting', '1');
+      var btn = e.submitter || f.querySelector('button[type="submit"], button:not([type])');
+      // Wait one tick so a button's name/value is still sent with the form.
+      setTimeout(function () { if (btn) btn.classList.add('is-loading'); }, 0);
+      // Downloads (export) keep the page open, so give the button back after a while.
+      setTimeout(function () { reset(f, btn); }, 6000);
+    });
+    window.addEventListener('pageshow', function () {
+      document.querySelectorAll('form[data-submitting]').forEach(function (f) {
+        f.removeAttribute('data-submitting');
+      });
+      document.querySelectorAll('.btn.is-loading').forEach(function (b) { b.classList.remove('is-loading'); });
+    });
+  })();
+
+  /* ---------- Flash messages: dismiss button, success fades out ---------- */
+  (function flash() {
+    document.querySelectorAll('.message').forEach(function (m) {
+      var isError = m.classList.contains('message-error');
+      m.setAttribute('role', isError ? 'alert' : 'status');
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'msg-close';
+      close.setAttribute('aria-label', 'Dismiss message');
+      close.textContent = '\u00d7';
+      function hide() {
+        if (!m.parentNode) return;
+        m.classList.add('is-leaving');
+        setTimeout(function () { if (m.parentNode) m.parentNode.removeChild(m); }, 320);
+      }
+      close.addEventListener('click', hide);
+      m.appendChild(close);
+      if (!isError) setTimeout(hide, 6000);
+    });
+  })();
+
   /* ---------- Custom limit fields show only for custom mode ---------- */
   (function customFields() {
     var form = document.getElementById('form-mode');
@@ -148,6 +196,87 @@
     function sync() { fields.classList.toggle('hidden', select.value !== 'custom'); }
     select.addEventListener('change', sync);
     sync();
+  })();
+
+  /* ---------- Add admin: show/hide button and strength hint (advice only; the server decides) ---------- */
+  (function passwordHelper() {
+    var form = document.getElementById('form-admin');
+    if (!form) return;
+    var input = form.querySelector('input[name="password"]');
+    if (!input || !input.parentNode) return;
+
+    var parent = input.parentNode;
+    var wrap = document.createElement('div');
+    wrap.className = 'pw-wrap';
+    parent.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'pw-toggle';
+    toggle.textContent = 'Show';
+    toggle.setAttribute('aria-label', 'Show password');
+    toggle.setAttribute('aria-pressed', 'false');
+    wrap.appendChild(toggle);
+
+    var meter = document.createElement('div');
+    meter.className = 'strength';
+    meter.setAttribute('data-level', '0');
+    var bar = document.createElement('div');
+    bar.className = 'strength-bar';
+    bar.appendChild(document.createElement('i'));
+    var text = document.createElement('div');
+    text.className = 'strength-text';
+    text.setAttribute('aria-live', 'polite');
+    meter.appendChild(bar);
+    meter.appendChild(text);
+    parent.appendChild(meter);
+
+    // Put the username rule right under the Username box (the password rule is the strength hint).
+    var hint = form.querySelector('p.hint');
+    var userInput = form.querySelector('input[name="username"]');
+    if (hint && userInput && userInput.parentNode && userInput.parentNode.tagName === 'LABEL') {
+      hint.textContent = '3 to 50 letters, digits, _ . -';
+      hint.className = 'strength-text';
+      userInput.parentNode.appendChild(hint);
+    }
+
+    function level(p) {
+      if (!p) return 0;
+      if (p.length < 8) return 1;
+      var classes = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(function (r) { return r.test(p); }).length;
+      var s = classes + (p.length >= 12 ? 1 : 0);
+      if (s <= 1) return 1;
+      if (s === 2) return 2;
+      if (s === 3) return 3;
+      return 4;
+    }
+    var WORDS = [
+      'Use at least 8 characters.',
+      'Weak: add capitals, numbers or symbols.',
+      'Fair: add length or a symbol.',
+      'Good password.',
+      'Strong password.'
+    ];
+    var TOO_SHORT = 'Too short: use at least 8 characters.';
+
+    function update() {
+      var v = input.value;
+      var l = level(v);
+      meter.setAttribute('data-level', String(l));
+      text.textContent = (v && v.length < 8) ? TOO_SHORT : WORDS[l];
+    }
+
+    toggle.addEventListener('click', function () {
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      toggle.textContent = show ? 'Hide' : 'Show';
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+      input.focus();
+    });
+    input.addEventListener('input', update);
+    update();
   })();
 
   /* ---------- Live status polling (Dashboard only) ---------- */
@@ -166,14 +295,43 @@
 
     function setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
 
+    function setTemp(text) {
+      var el = document.getElementById('temp-value');
+      if (!el || el.textContent === text) return;
+      el.textContent = text;
+      el.classList.remove('tick');
+      void el.offsetWidth;            // restart the small pulse
+      el.classList.add('tick');
+    }
+
+    function setIndicators(led, state) {
+      var l = document.getElementById('led-state');
+      var s = document.getElementById('system-state');
+      if (l && led) l.setAttribute('data-led', led);
+      if (s && state) s.setAttribute('data-state', state);
+    }
+
+    // First paint: read the words the server already rendered.
+    (function initIndicators() {
+      var l = document.getElementById('led-state');
+      var s = document.getElementById('system-state');
+      var ledMap = { off: 'OFF', on: 'ON', blinking: 'BLINK' };
+      if (l) l.setAttribute('data-led', ledMap[l.textContent.trim().toLowerCase()] || 'OFF');
+      if (s) {
+        var t = s.textContent.trim().toLowerCase();
+        s.setAttribute('data-state', t.indexOf('running') === 0 ? 'running' : (t.indexOf('off') === 0 ? 'off' : 'idle'));
+      }
+    })();
+
     function render(d) {
-      setText('temp-value', typeof d.temp === 'number' ? d.temp.toFixed(1) : '--');
+      setTemp(typeof d.temp === 'number' ? d.temp.toFixed(1) : '--');
       setText('temp-label', d.label || '--');
       setText('mode-name', MODE[d.mode] || '--');
       setText('room-name', d.room || '--');
       setText('system-state', STATE[d.state] || '--');
       setText('led-state', LED[d.led] || '--');
       setText('updated-at', d.updated_at || '--');
+      setIndicators(d.led, d.state);
 
       var label = document.getElementById('temp-label');
       if (label) {

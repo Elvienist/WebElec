@@ -63,6 +63,55 @@ function write_partial_hour(array $state): void
     ]);
 }
 
+// LOCAL DEMO ONLY (Test Panel): apply one simulated reading the same way a
+// real sensor reading is applied. Returns the resulting label.
+function test_apply_reading(float $temp): string
+{
+    require_once __DIR__ . '/rules.php';
+
+    $temp = round($temp, 1);
+    $state = get_state();
+    $now = date('Y-m-d H:i:s');
+
+    $res = evaluate_reading($temp, true, $state);
+
+    $led = $res['led'];
+    $silenced = (int) $state['silenced'];
+    if ($led === 'BLINK') {
+        if ($silenced === 1) {
+            $led = 'OFF';
+        }
+    } else {
+        $silenced = 0;
+    }
+
+    $ins = db()->prepare('INSERT INTO readings (temp, taken_at, is_test) VALUES (?, ?, 1)');
+    $ins->execute([$temp, $now]);
+
+    if (!empty($res['event'])) {
+        $rec = db()->prepare(
+            'INSERT INTO records
+             (recorded_at, room_name, mode, temp, min_temp, max_temp, event, is_test)
+             VALUES (?, ?, ?, ?, NULL, NULL, ?, 1)'
+        );
+        $rec->execute([$now, $state['room_name'], $state['mode'], $temp, $res['event']]);
+    }
+
+    save_state([
+        'last_temp'       => $temp,
+        'sim_temp'        => $temp,
+        'last_label'      => $res['label'],
+        'last_led'        => $led,
+        'last_reading_at' => $now,
+        'last_sensor_ok'  => 1,
+        'silenced'        => $silenced,
+    ]);
+
+    check_hourly_record(true, $state);
+
+    return (string) $res['label'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit('POST only.');
@@ -192,6 +241,85 @@ try {
             } else {
                 flash_set('error', 'Nothing to silence.');
             }
+            break;
+
+        /* ---- LOCAL DEMO ONLY: Test Panel actions (not pushed) ---- */
+
+        case 'test_sim':
+            $on = ((string) ($_POST['sim_on'] ?? '0') === '1') ? 1 : 0;
+            save_state($on === 1 ? ['sim_on' => 1] : ['sim_on' => 0, 'sim_temp' => null]);
+            reset_tracking();
+            flash_set('success', $on === 1 ? 'Simulation is ON.' : 'Simulation is OFF.');
+            break;
+
+        case 'test_scenario':
+        case 'test_manual':
+            if ((int) $state['running'] !== 1 || empty($state['room_name'])) {
+                flash_set('error', 'Start the system with a room name first.');
+                break;
+            }
+
+            if ($action === 'test_manual') {
+                $t = filter_var($_POST['temp'] ?? '', FILTER_VALIDATE_FLOAT);
+                if ($t === false || $t < 0 || $t > 60) {
+                    flash_set('error', 'Enter a temperature from 0 to 60.');
+                    break;
+                }
+                $temp = (float) $t;
+            } else {
+                $sc = (string) ($_POST['scenario'] ?? '');
+                $fixed = [
+                    'normal'   => 29.0,
+                    'elevated' => 36.0,
+                    'fire'     => 42.0,
+                    'too_low'  => (float) $state['custom_low'] - 2.0,
+                    'too_high' => (float) $state['custom_high'] + 2.0,
+                ];
+
+                if ($sc === 'spike') {
+                    require_once __DIR__ . '/rules.php';
+                    $cut = date('Y-m-d H:i:s', strtotime('-' . BASELINE_MINUTES . ' minutes'));
+                    $q = db()->prepare('SELECT AVG(temp) FROM readings WHERE is_test = 1 AND taken_at >= ?');
+                    $q->execute([$cut]);
+                    $avg = $q->fetchColumn();
+                    if ($avg === null || $avg === false) {
+                        // No baseline yet: send one normal reading first.
+                        test_apply_reading(29.0);
+                        sleep(1);
+                        $avg = 29.0;
+                    }
+                    $temp = (float) $avg + SPIKE_RISE + 1.0;
+                } elseif (isset($fixed[$sc])) {
+                    $temp = $fixed[$sc];
+                } else {
+                    flash_set('error', 'Unknown scenario.');
+                    break;
+                }
+            }
+
+            if ((int) $state['sim_on'] !== 1) {
+                save_state(['sim_on' => 1]);
+            }
+
+            $temp = max(0.0, min(60.0, $temp));
+            $label = test_apply_reading($temp);
+            flash_set('success', sprintf('Test reading %.1f C: %s.', $temp, $label));
+            break;
+
+        case 'test_force_hourly':
+            if ((int) $state['running'] !== 1 || empty($state['room_name']) || $state['mode'] !== 'general') {
+                flash_set('error', 'Hourly records need General mode with a room running.');
+                break;
+            }
+            write_partial_hour($state);
+            flash_set('success', 'Hourly record written (if there were readings this hour).');
+            break;
+
+        case 'test_clear':
+            db()->exec('DELETE FROM records WHERE is_test = 1');
+            db()->exec('DELETE FROM readings WHERE is_test = 1');
+            reset_tracking();
+            flash_set('success', 'Test records and readings deleted.');
             break;
 
         default:
