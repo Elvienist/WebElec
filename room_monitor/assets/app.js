@@ -323,6 +323,251 @@
       }
     })();
 
+    /* ---------- Temperature trend graphic: draws only real readings from status.php ---------- */
+    /*GEOM-START*/
+    var TG = { W: 600, H: 240, L: 46, R: 12, T: 4, B: 28, N: 16, HEAD: 28 };
+
+    function f1(n) { return String(Math.round(n * 10) / 10); }
+
+    // Value range shown on the chart: a little wider than the readings, never narrower than 6 degrees.
+    function trendDomain(vals) {
+      var lo = Infinity, hi = -Infinity;
+      vals.forEach(function (v) { if (v !== null) { if (v < lo) lo = v; if (v > hi) hi = v; } });
+      if (lo === Infinity) return { lo: 0, hi: 50 };
+      lo = Math.floor(lo - 1.5);
+      hi = Math.ceil(hi + 1.5);
+      if (hi - lo < 6) { lo = Math.floor((hi + lo) / 2 - 3); hi = lo + 6; }
+      return { lo: lo, hi: hi };
+    }
+
+    // Smooth line through the points (Catmull-Rom turned into Bezier curves) and its final direction.
+    function curveOf(pts) {
+      if (pts.length < 2) return null;
+      var d = 'M' + f1(pts[0].x) + ' ' + f1(pts[0].y), ux = 1, uy = 0;
+      for (var i = 0; i < pts.length - 1; i++) {
+        var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        var c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+        var c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+        d += ' C' + f1(c1x) + ' ' + f1(c1y) + ' ' + f1(c2x) + ' ' + f1(c2y) + ' ' + f1(p2.x) + ' ' + f1(p2.y);
+        if (i === pts.length - 2) { ux = p2.x - c2x; uy = p2.y - c2y; }
+      }
+      var len = Math.sqrt(ux * ux + uy * uy);
+      if (len < 0.01) {
+        var a = pts[pts.length - 2], b = pts[pts.length - 1];
+        ux = b.x - a.x; uy = b.y - a.y;
+        len = Math.sqrt(ux * ux + uy * uy) || 1;
+      }
+      var last = pts[pts.length - 1];
+      return { d: d, x: last.x, y: last.y, ux: ux / len, uy: uy / len };
+    }
+
+    function arrowPoints(c) {
+      var nx = -c.uy, ny = c.ux;
+      return [
+        f1(c.x + c.ux * 9) + ',' + f1(c.y + c.uy * 9),
+        f1(c.x - c.ux * 3 + nx * 6) + ',' + f1(c.y - c.uy * 3 + ny * 6),
+        f1(c.x - c.ux * 3 - nx * 6) + ',' + f1(c.y - c.uy * 3 - ny * 6)
+      ].join(' ');
+    }
+
+    // vals: array of TG.N + 1 numbers (null = empty slot), oldest first. shift: slide offset in pixels.
+    function trendGeometry(vals, lo, hi, shift) {
+      var slot = (TG.W - TG.L - TG.R) / TG.N;
+      var base = TG.H - TG.B;
+      var usable = base - TG.T - TG.HEAD;
+      var bw = slot * 0.56, span = (hi - lo) || 1;
+      var bars = [], pts = [];
+      for (var k = 0; k < vals.length; k++) {
+        var v = vals[k];
+        if (v === null) continue;
+        var f = Math.max(0, Math.min(1, (v - lo) / span));
+        var h = Math.max(2, f * usable);
+        var cx = TG.L + slot * (k - 1 + 0.5) + shift;
+        bars.push({ k: k, x: cx - bw / 2, y: base - h, w: bw, h: h });
+        pts.push({ x: cx, y: base - h - 14 });
+      }
+      return { bars: bars, curve: curveOf(pts), base: base, usable: usable, slot: slot };
+    }
+    /*GEOM-END*/
+
+    var trend = (function () {
+      var NS = 'http://www.w3.org/2000/svg';
+      var size = TG.N + 1;
+      var base = TG.H - TG.B;
+      var usable = base - TG.T - TG.HEAD;
+      var slotPx = (TG.W - TG.L - TG.R) / TG.N;
+      var liveCard = document.getElementById('live-card');
+
+      var card = document.createElement('section');
+      card.className = 'card';
+      card.id = 'trend-card';
+      card.setAttribute('data-tone', 'muted');
+      card.innerHTML = [
+        '<div class="card-head"><h2>Temperature trend</h2><span class="pager-info" id="trend-meta">Waiting for live readings</span></div>',
+        '<svg id="trend-svg" viewBox="0 0 ' + TG.W + ' ' + TG.H + '" role="img" aria-label="Temperature trend chart: no readings yet">',
+        '<defs>',
+        '<linearGradient id="trend-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".95"/><stop offset="1" stop-color="currentColor" stop-opacity=".04"/></linearGradient>',
+        '<filter id="trend-glow" filterUnits="userSpaceOnUse" x="0" y="0" width="' + TG.W + '" height="' + TG.H + '"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
+        '<clipPath id="trend-clip"><rect x="' + TG.L + '" y="0" width="' + (TG.W - TG.L) + '" height="' + TG.H + '"/></clipPath>',
+        '</defs>',
+        '<line class="trend-guide" x1="' + TG.L + '" x2="' + (TG.W - TG.R) + '" y1="' + (base - usable) + '" y2="' + (base - usable) + '"/>',
+        '<line class="trend-base" x1="' + TG.L + '" x2="' + (TG.W - TG.R) + '" y1="' + base + '" y2="' + base + '"/>',
+        '<text class="trend-axis" id="trend-hi" x="' + (TG.L - 8) + '" y="' + (base - usable + 3) + '" text-anchor="end"></text>',
+        '<text class="trend-axis" id="trend-lo" x="' + (TG.L - 8) + '" y="' + (base + 3) + '" text-anchor="end"></text>',
+        '<text class="trend-axis" x="' + TG.L + '" y="' + (TG.H - 8) + '">older</text>',
+        '<text class="trend-axis" x="' + (TG.W - TG.R) + '" y="' + (TG.H - 8) + '" text-anchor="end">now</text>',
+        '<g clip-path="url(#trend-clip)"><g id="trend-bars"></g>',
+        '<path id="trend-line" d="" filter="url(#trend-glow)" visibility="hidden"/>',
+        '<polygon id="trend-arrow" points="" filter="url(#trend-glow)" visibility="hidden"/></g>',
+        '<text class="trend-empty" id="trend-empty" x="' + (TG.W / 2) + '" y="' + (TG.H / 2) + '" text-anchor="middle">No live readings yet</text>',
+        '</svg>',
+        '<p class="hint">Bars show the last ' + TG.N + ' live readings from the sensor. The glowing line follows their trend and the arrow shows the current direction.</p>'
+      ].join('');
+      liveCard.parentNode.insertBefore(card, liveCard.nextSibling);
+
+      var svg = card.querySelector('#trend-svg');
+      var barsG = card.querySelector('#trend-bars');
+      var lineEl = card.querySelector('#trend-line');
+      var arrowEl = card.querySelector('#trend-arrow');
+      var emptyEl = card.querySelector('#trend-empty');
+      var metaEl = card.querySelector('#trend-meta');
+      var hiEl = card.querySelector('#trend-hi');
+      var loEl = card.querySelector('#trend-lo');
+
+      var rects = [];
+      for (var i = 0; i < size; i++) {
+        var r = document.createElementNS(NS, 'rect');
+        r.setAttribute('class', 'trend-bar');
+        r.setAttribute('rx', '3');
+        r.setAttribute('visibility', 'hidden');
+        barsG.appendChild(r);
+        rects.push(r);
+      }
+
+      var target, disp, dLo, dHi, tLo, tHi, shift, raf = null, hasData, lastStamp, lastRoom;
+
+      function reduced() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      }
+
+      function reset() {
+        target = []; disp = [];
+        for (var j = 0; j < size; j++) { target.push(null); disp.push(null); }
+        dLo = tLo = 0; dHi = tHi = 50;
+        shift = 0;
+        hasData = false;
+        lastStamp = null;
+        hiEl.textContent = '';
+        loEl.textContent = '';
+        emptyEl.setAttribute('visibility', 'visible');
+        svg.setAttribute('aria-label', 'Temperature trend chart: no readings yet');
+        draw();
+      }
+
+      function draw() {
+        var g = trendGeometry(disp, dLo, dHi, shift);
+        var seen = {};
+        g.bars.forEach(function (b) {
+          var el = rects[b.k];
+          el.setAttribute('x', f1(b.x));
+          el.setAttribute('y', f1(b.y));
+          el.setAttribute('width', f1(b.w));
+          el.setAttribute('height', f1(b.h));
+          el.setAttribute('visibility', 'visible');
+          seen[b.k] = true;
+        });
+        for (var j = 0; j < size; j++) { if (!seen[j]) rects[j].setAttribute('visibility', 'hidden'); }
+        if (g.curve) {
+          lineEl.setAttribute('d', g.curve.d);
+          arrowEl.setAttribute('points', arrowPoints(g.curve));
+          lineEl.setAttribute('visibility', 'visible');
+          arrowEl.setAttribute('visibility', 'visible');
+        } else {
+          lineEl.setAttribute('visibility', 'hidden');
+          arrowEl.setAttribute('visibility', 'hidden');
+        }
+      }
+
+      function frame() {
+        raf = null;
+        var moving = false, snap = reduced(), k = 0.18;
+        for (var j = 0; j < size; j++) {
+          if (target[j] === null) { disp[j] = null; continue; }
+          if (disp[j] === null) disp[j] = dLo;
+          var diff = target[j] - disp[j];
+          if (snap || Math.abs(diff) < 0.005) disp[j] = target[j];
+          else { disp[j] += diff * k; moving = true; }
+        }
+        var dl = tLo - dLo, dh = tHi - dHi;
+        if (snap || (Math.abs(dl) < 0.005 && Math.abs(dh) < 0.005)) { dLo = tLo; dHi = tHi; }
+        else { dLo += dl * k; dHi += dh * k; moving = true; }
+        if (snap || Math.abs(shift) < 0.3) shift = 0;
+        else { shift *= (1 - k); moving = true; }
+        draw();
+        if (moving) raf = requestAnimationFrame(frame);
+      }
+
+      function kick() { if (raf === null) raf = requestAnimationFrame(frame); }
+
+      function push(v) {
+        var first = !hasData;
+        target.shift(); target.push(v);
+        disp.shift(); disp.push(first ? v : dLo);
+        var dom = trendDomain(target);
+        tLo = dom.lo; tHi = dom.hi;
+        if (first) { dLo = tLo; dHi = tHi; }
+        hasData = true;
+        shift = reduced() ? 0 : slotPx;
+        hiEl.textContent = tHi + '\u00b0';
+        loEl.textContent = tLo + '\u00b0';
+        emptyEl.setAttribute('visibility', 'hidden');
+        var count = Math.min(TG.N, target.filter(function (x) { return x !== null; }).length);
+        svg.setAttribute('aria-label', 'Temperature trend chart: last ' + count + ' readings, latest ' + v.toFixed(1) + ' degrees Celsius');
+        kick();
+      }
+
+      function update(d) {
+        if (lastRoom !== undefined && d.room !== lastRoom) reset();   // new room: start a new history
+        lastRoom = d.room;
+
+        var isLive = d.state === 'running' && d.signal !== false;
+        if (isLive && typeof d.temp === 'number' && d.updated_at && d.updated_at !== '--' && d.updated_at !== lastStamp) {
+          lastStamp = d.updated_at;
+          push(d.temp);
+        }
+        card.setAttribute('data-tone', isLive && d.tone ? d.tone : 'muted');
+        card.classList.toggle('is-stale', !isLive && hasData);
+
+        var words;
+        if (!hasData) words = 'Waiting for live readings';
+        else if (isLive) words = 'Live \u00b7 ' + d.updated_at;
+        else if (d.state === 'running') words = 'No signal: showing the last readings';
+        else if (d.state === 'off') words = 'System off: showing the last readings';
+        else words = 'Idle: showing the last readings';
+        metaEl.textContent = words;
+      }
+
+      reset();
+
+      // First paint: use the reading the server already rendered on the page, if it is live.
+      (function seed() {
+        var t = parseFloat((document.getElementById('temp-value') || {}).textContent);
+        var stamp = ((document.getElementById('updated-at') || {}).textContent || '').trim();
+        var sys = document.getElementById('system-state');
+        var noteBox = document.getElementById('signal-note');
+        var roomText = ((document.getElementById('room-name') || {}).textContent || '').trim();
+        lastRoom = (roomText === '' || roomText === '--') ? null : roomText;
+        var running = sys && sys.getAttribute('data-state') === 'running';
+        var signalOk = !noteBox || noteBox.classList.contains('hidden');
+        if (running && signalOk && !isNaN(t) && stamp && stamp !== '--') {
+          lastStamp = stamp;
+          push(t);
+        }
+      })();
+
+      return { update: update };
+    })();
+
     function render(d) {
       setTemp(typeof d.temp === 'number' ? d.temp.toFixed(1) : '--');
       setText('temp-label', d.label || '--');
@@ -343,6 +588,7 @@
         note.classList.toggle('hidden', d.signal !== false);
       }
       if (banner) banner.classList.toggle('hidden', !d.sim_on);
+      trend.update(d);
     }
 
     function connectionLost() {

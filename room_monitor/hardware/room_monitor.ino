@@ -1,8 +1,8 @@
 #include <DHT.h>
 
 #define DHT_PIN   2
-#define DHT_TYPE  DHT11
-#define LED_PIN   8
+#define DHT_TYPE  DHT22
+#define LED_PIN   13
 
 const unsigned long SEND_INTERVAL  = 2000;   // send a reading every 2 s
 const unsigned long BLINK_INTERVAL = 500;    // blink every 500 ms

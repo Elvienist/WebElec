@@ -29,7 +29,15 @@ if (!is_string($key) || !hash_equals(BRIDGE_KEY, $key)) {
 
 try {
     $state = get_state();
-
+    // LOCAL DEMO ONLY: while the Test Panel simulation is on, keep the
+    // simulated state and send the hardware the LED command it chose.
+    if ((int) $state['sim_on'] === 1) {
+        $led = (string) ($state['last_led'] ?? 'OFF');
+        if (!in_array($led, ['OFF', 'ON', 'BLINK'], true)) {
+            $led = 'OFF';
+        }
+        reply($led);
+    }
     save_state([
         'last_reading_at' => date('Y-m-d H:i:s'),
     ]);
