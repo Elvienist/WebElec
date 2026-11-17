@@ -24,6 +24,7 @@ if (!hash_equals(BRIDGE_KEY, $key) || !in_array($ip, ['127.0.0.1', '::1'], true)
 
 try {
     $state = get_state();
+<<<<<<< HEAD
     $now = date('Y-m-d H:i:s');
 
     // Step 2: raw reading or sensor error
@@ -37,6 +38,20 @@ try {
             $temp = round((float) $raw, 1);
         }
     }
+=======
+    // LOCAL DEMO ONLY: while the Test Panel simulation is on, keep the
+    // simulated state and send the hardware the LED command it chose.
+    if ((int) $state['sim_on'] === 1) {
+        $led = (string) ($state['last_led'] ?? 'OFF');
+        if (!in_array($led, ['OFF', 'ON', 'BLINK'], true)) {
+            $led = 'OFF';
+        }
+        reply($led);
+    }
+    save_state([
+        'last_reading_at' => date('Y-m-d H:i:s'),
+    ]);
+>>>>>>> 34394ab1b9f6ac9be16b2a466404de72d392f26d
 
     // Step 3: simulation replaces the reading
     $isTest = ((int) $state['sim_on'] === 1 && $state['sim_temp'] !== null);

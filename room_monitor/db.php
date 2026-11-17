@@ -12,7 +12,11 @@ function db(): PDO
         return $pdo;
     }
 
+<<<<<<< HEAD
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+=======
+    $dsn = 'mysql:host=' . DB_HOST . ';port=3306;dbname=' . DB_NAME . ';charset=utf8mb4';
+>>>>>>> 34394ab1b9f6ac9be16b2a466404de72d392f26d
 
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
