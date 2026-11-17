@@ -1,0 +1,6 @@
+﻿Time,Room,Mode,Temperature,Min,Max,Event,Test
+"2026-10-26 10:09:33","Room 1",general,29.5,29.5,29.5,HOURLY,
+"2026-10-26 10:38:02","Room 1",custom,29.5,,,PERIODIC,
+"2026-10-26 10:39:03","Room 1",custom,29.5,,,PERIODIC,
+"2026-10-26 10:40:15","Room 2",custom,29.5,,,PERIODIC,
+"2026-10-26 10:45:47","Room 2",general,29.5,29.5,29.5,HOURLY,

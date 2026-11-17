@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login · Room Monitor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar"><h1 class="brand">Room Monitor</h1></header>
+<main class="page">
+  <section class="card card-narrow">
+    <h2>Admin login</h2>
+    <div id="flash" class="hidden"></div>
+    <form id="form-login">
+      <label>Email
+        <input type="email" name="email" required autocomplete="username" autofocus>
+      </label>
+      <label>Password
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button class="btn btn-neutral" type="submit">Log in</button>
+    </form>
+  </section>
+</main>
+<script type="module" src="login.js"></script>
+</body>
+</html>

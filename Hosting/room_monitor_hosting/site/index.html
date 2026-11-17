@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Room Monitor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="visibility:hidden">
+<header id="topbar"></header>
+<main class="page">
+<div id="flash" class="hidden"></div>
+
+<section class="card" id="live-card">
+  <h2>Live temperature</h2>
+  <div class="live-main">
+    <div class="temp-wrap"><span id="temp-value">--</span><span class="unit">°C</span></div>
+    <span id="temp-label" class="tone-muted">--</span>
+  </div>
+  <div class="meta-grid">
+    <div class="meta"><div class="meta-label">Mode</div><div class="meta-value" id="mode-name">--</div></div>
+    <div class="meta"><div class="meta-label">Room</div><div class="meta-value" id="room-name">--</div></div>
+    <div class="meta"><div class="meta-label">System</div><div class="meta-value" id="system-state">--</div></div>
+    <div class="meta"><div class="meta-label">LED</div><div class="meta-value" id="led-state">--</div></div>
+    <div class="meta"><div class="meta-label">Updated</div><div class="meta-value" id="updated-at">--</div></div>
+  </div>
+  <div id="signal-note" class="note hidden">No signal from the sensor bridge</div>
+  <div id="sim-banner" class="banner hidden">Simulation is ON: readings are fake</div>
+</section>
+
+<section class="card" id="controls-card">
+  <h2>Controls</h2>
+
+  <div class="control-block">
+    <form id="form-mode">
+      <div class="form-row">
+        <label>Mode
+          <select name="mode">
+            <option value="general">General</option>
+            <option value="fire">Fire</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <button class="btn btn-neutral" type="submit">Save mode</button>
+      </div>
+      <div id="custom-fields" class="hidden">
+        <div class="form-row">
+          <label>Lower limit (°C)
+            <input type="number" name="custom_low" step="0.1" min="0" max="60" value="25">
+          </label>
+          <label>Upper limit (°C)
+            <input type="number" name="custom_high" step="0.1" min="0" max="60" value="32">
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Logging style
+            <select name="custom_log_style">
+              <option value="crossing">On crossing</option>
+              <option value="periodic">Periodic</option>
+            </select>
+          </label>
+          <label>Every (minutes, 1 to 60)
+            <input type="number" name="custom_interval_min" step="1" min="1" max="60" value="5">
+          </label>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="control-block">
+    <form id="form-room">
+      <div class="form-row">
+        <label>Room name
+          <input type="text" name="room_name" required maxlength="100" placeholder="e.g. Room 1">
+        </label>
+        <button class="btn btn-neutral" type="submit">Start</button>
+      </div>
+    </form>
+    <form id="form-change-room" class="hidden" data-confirm="Change room? Monitoring will stop until you enter a new room name.">
+      <button class="btn btn-ghost" type="submit">Change Room</button>
+    </form>
+  </div>
+
+  <div class="control-block">
+    <div class="actions">
+      <form id="form-toggle"><button id="toggle-btn" class="btn btn-green" type="submit">Turn system on</button></form>
+      <form id="form-silence"><button class="btn btn-ghost" type="submit">Silence LED</button></form>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <details id="test-panel">
+    <summary>Test panel</summary>
+
+    <div class="control-block">
+      <form id="form-sim">
+        <div class="actions">
+          <button id="sim-btn" class="btn btn-green" type="submit" value="1">Turn simulation on</button>
+          <span class="hint" id="sim-hint">Simulation is OFF. When on, the real sensor is ignored.</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="control-block">
+      <form id="form-scenarios">
+        <div class="actions">
+          <button class="btn btn-ghost" type="submit" value="normal">Normal (29)</button>
+          <button class="btn btn-ghost" type="submit" value="spike">Spike</button>
+          <button class="btn btn-ghost" type="submit" value="elevated">Elevated (36)</button>
+          <button class="btn btn-ghost" type="submit" value="fire">Fire (42)</button>
+          <button class="btn btn-ghost" type="submit" value="too_low">Too Low</button>
+          <button class="btn btn-ghost" type="submit" value="too_high">Too High</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="control-block">
+      <form id="form-manual">
+        <div class="form-row">
+          <label>Manual temperature (°C)
+            <input type="number" name="temp" step="0.1" min="0" max="60" required>
+          </label>
+          <button class="btn btn-neutral" type="submit">Send</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="control-block">
+      <div class="actions">
+        <form id="form-force-hourly"><button class="btn btn-ghost" type="submit">Force hourly record</button></form>
+        <form id="form-clear-test" data-confirm="Delete all TEST records?"><button class="btn btn-red" type="submit">Clear test data</button></form>
+      </div>
+    </div>
+  </details>
+</section>
+</main>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>

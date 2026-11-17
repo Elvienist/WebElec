@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Records · Room Monitor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="visibility:hidden">
+<header id="topbar"></header>
+<main class="page">
+<div id="flash" class="hidden"></div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Records</h2>
+    <form id="export-form" data-confirm="Download ALL records as a CSV file, then permanently delete them? Admins and settings are kept.">
+      <button class="btn btn-red" type="submit">Export and clear</button>
+    </form>
+  </div>
+  <form id="filters">
+    <div class="form-row">
+      <label>Room <select name="room" id="f-room"><option value="">All rooms</option></select></label>
+      <label>Mode <select name="mode" id="f-mode"><option value="">All modes</option></select></label>
+      <label>Event <select name="event" id="f-event"><option value="">All events</option></select></label>
+      <button class="btn btn-neutral" type="submit">Filter</button>
+      <button class="btn btn-ghost" type="reset" id="f-reset">Reset</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <div id="records-area"></div>
+  <div id="pager"></div>
+</section>
+</main>
+<script type="module" src="records.js"></script>
+</body>
+</html>

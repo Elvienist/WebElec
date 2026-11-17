@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admins · Room Monitor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="visibility:hidden">
+<header id="topbar"></header>
+<main class="page">
+<div id="flash" class="hidden"></div>
+
+<section class="card">
+  <h2>Admins</h2>
+  <div class="table-wrap">
+    <table id="admin-list" class="table">
+      <thead><tr><th>Username</th><th>Email</th><th>Created by</th><th>Created at</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Add admin</h2>
+  <form id="form-admin">
+    <div class="form-row">
+      <label>Username
+        <input type="text" name="username" required minlength="3" maxlength="50" pattern="[A-Za-z0-9_.\-]+" autocomplete="off">
+      </label>
+      <label>Email
+        <input type="email" name="email" required autocomplete="off">
+      </label>
+      <button class="btn btn-neutral" type="submit">Add admin</button>
+    </div>
+    <p class="hint">Username: 3 to 50 letters, digits, _ . -. No password is set here. You get a link to give the new admin so they can choose their own.</p>
+  </form>
+</section>
+</main>
+<script type="module" src="admins.js"></script>
+</body>
+</html>
